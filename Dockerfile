@@ -1,28 +1,17 @@
 # 构建阶段
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26.1-alpine AS builder
 
 WORKDIR /app
 
 # 安装构建依赖
 RUN apk add --no-cache git ca-certificates
 
-# 1. 创建 go.mod (基础版本)
-RUN echo 'module screenshot-service' > go.mod && \
-    echo '' >> go.mod && \
-    echo 'go 1.25' >> go.mod
+# 优先复制依赖清单，利用 Docker 层缓存
+COPY go.mod go.sum ./
+RUN go mod download
 
-# 2. 复制源代码
+# 复制源代码并构建
 COPY *.go ./
-
-# 3. 强制更新依赖到最新版：先执行 go get -u 拉取最新库，再执行 tidy，为了解决 unknown IPAddressSpace 报错
-RUN go get -u github.com/chromedp/chromedp@latest && \
-    go get -u github.com/chromedp/cdproto@latest && \
-    go mod tidy
-
-# 打印一下版本，确保构建时能看到 (调试用)
-RUN cat go.mod
-
-# 构建
 RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags="-w -s" -o /screenshot-service .
 
 # 运行阶段
