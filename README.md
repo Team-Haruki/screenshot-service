@@ -1,7 +1,16 @@
 # screenshot-service
-一个GO+dockerfile的网页截图微服务例程
-# GET 请求示例
-```
+
+一个使用 Rust + Axum + Chromiumoxide 重写的网页截图微服务。
+
+## 接口
+
+- `GET /health`: 健康检查，返回 `{"status":"ok"}`
+- `GET /screenshot`: 通过 query 参数截图
+- `POST /screenshot`: 通过 JSON body 截图
+
+## GET 请求示例
+
+```bash
 # 基本截图
 curl "http://localhost:8080/screenshot?url=https://www.google.com"
 
@@ -17,8 +26,10 @@ curl "http://localhost:8080/screenshot?url=https://example.com&headers=%7B%22Aut
 # 保存到文件
 curl -o screenshot.png "http://localhost:8080/screenshot?url=https://www.google.com&format=png"
 ```
-# POST 请求示例
-```
+
+## POST 请求示例
+
+```bash
 # 基本 POST 请求
 curl -X POST http://localhost:8080/screenshot \
   -H "Content-Type: application/json" \
@@ -68,44 +79,40 @@ curl -X POST http://localhost:8080/screenshot \
   }' --output cropped.jpg
 ```
 
-# 6. 参数说明
+## 参数说明
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `url` | string | 必填 | 目标网页 URL |
 | `width` | int | 1920 | 视口宽度 (100-4096) |
 | `height` | int | 1080 | 视口高度 (100-10000) |
-| `format` | string | png | 输出格式: png/jpeg/webp |
-| `quality` | int | 90 | 压缩质量 (1-100) |
-| `wait_time` | int | 0 | 额外等待时间(毫秒) |
-| `wait_for` | string | - | 等待元素出现(CSS选择器) |
-| `full_page` | bool | false | 是否全页面截图 |
-| `headers` | object | - | 自定义请求头 |
+| `format` | string | png | 输出格式: png/jpeg/jpg/webp |
+| `quality` | int | 90 | 压缩质量 (1-100)，用于 jpeg/webp |
+| `wait_time` | int | 0 | 额外等待时间，单位毫秒 |
+| `wait_for` | string | - | 等待元素出现并可见的 CSS 选择器 |
+| `full_page` | bool | false | 是否全页面截图，最大高度 16384px |
+| `headers` | object | - | 自定义请求头；GET 时传 JSON 字符串 |
 | `user_agent` | string | - | 自定义 User-Agent |
 | `device_scale` | float | 1.0 | 设备像素比 |
 | `mobile` | bool | false | 移动端模拟 |
 | `landscape` | bool | false | 横屏模式 |
-| `timeout` | int | 30 | 超时时间(秒, 最大120) |
-| `clip` | object | - | 裁剪区域 {x,y,width,height} |
+| `timeout` | int | 30 | 超时时间，单位秒，最大 120 |
+| `clip` | object | - | 裁剪区域 `{x,y,width,height}` |
 
-# 7. 部署运行
+## 本地运行
 
+本机运行需要安装 Chrome/Chromium。服务会自动探测浏览器，也可以通过 `CHROME_BIN` 指定可执行文件路径。
+
+```bash
+export CHROME_BIN=/path/to/chromium
+cargo run
+curl -o test.png "http://localhost:8080/screenshot?url=https://www.google.com"
 ```
-# 克隆或创建项目
-mkdir screenshot-service && cd screenshot-service
 
-# 创建上述所有文件后
+## Docker 部署
 
-# 初始化 Go 模块
-go mod init screenshot-service
-go mod tidy
-
-# 构建并启动
+```bash
 docker-compose up -d --build
-
-# 查看日志
 docker-compose logs -f
-
-# 测试
 curl -o test.png "http://localhost:8080/screenshot?url=https://www.google.com"
 ```
