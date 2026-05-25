@@ -2,81 +2,45 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
   pull_request:
-    branches: ["main"]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_TOOLCHAIN: "1.95.0"
 
 jobs:
   rust:
     name: Rust checks
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install Rust toolchain
-        run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --component rustfmt --component clippy
-          rustup default "$RUST_TOOLCHAIN"
-
-      - name: Cache Cargo files
-        uses: actions/cache@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
         with:
-          path: |
-            ~/.cargo/git
-            ~/.cargo/registry
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          components: rustfmt, clippy
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
 
       - name: Check formatting
         run: cargo fmt --all -- --check
+
+      - name: Check build
+        run: cargo check --locked --all-targets
 
       - name: Run Clippy
         run: cargo clippy --locked --all-targets -- -D warnings
 
       - name: Run tests
         run: cargo test --locked
-
-      - name: Check legacy Go files are gone
-        run: |
-          legacy_files="$(find . \( -path ./target -o -path ./.git \) -prune -o \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -print)"
-          if [ -n "$legacy_files" ]; then
-            echo "Legacy Go files should not remain:"
-            echo "$legacy_files"
-            exit 1
-          fi
-
-  docker:
-    name: Docker build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: false
-          tags: screenshot-service:ci
-          cache-from: type=gha,scope=docker
-          cache-to: type=gha,mode=max,scope=docker

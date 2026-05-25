@@ -39,9 +39,13 @@ Local non-Docker runs require Chrome or Chromium. Set `CHROME_BIN` when auto-det
 
 The Docker image installs Alpine Chromium and runs as a non-root user behind `dumb-init`.
 
-## Git Commits
+## Git commits
 
-Subject format: `[Type] Short description starting with capital letter`.
+All commit subjects must follow:
+
+```text
+[Type] Short description starting with capital letter
+```
 
 Allowed types:
 
@@ -54,26 +58,36 @@ Allowed types:
 
 Rules:
 
-- Description starts with a capital letter, imperative mood (`Add`, not `Added`).
-- No trailing period; keep the subject at or below ~70 characters.
-- Agent attribution uses the standard Git `Co-authored-by:` trailer in the commit body, not a free-form `Agent:` line. Place it on its own line, separated from the subject by a blank line. Suggested values:
-  - Claude (any 4.x): `Co-authored-by: Claude Opus 4.7 <noreply@anthropic.com>` (substitute the actual model, e.g. `Claude Sonnet 4.6`)
+- Description starts with a capital letter.
+- Use imperative mood: `Add ...`, not `Added ...`.
+- No trailing period.
+- Keep the subject at or below roughly 70 characters.
+- **Agent attribution uses the standard Git `Co-authored-by:` trailer in the commit body, not a free-form `Agent:` line.** This makes GitHub render the co-author avatar on the commit page. The trailer must be on its own line, separated from the subject by a blank line, in the form `Co-authored-by: <Display Name> <email>`. Suggested values per agent:
+  - Claude (any 4.x): `Co-authored-by: Claude Opus 4.7 <noreply@anthropic.com>` (substitute the actual model, e.g. `Claude Sonnet 4.6`, `Claude Haiku 4.5`)
   - Codex: `Co-authored-by: Codex <noreply@openai.com>`
   - Copilot: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 
-Project examples:
+Examples from this repo's history:
 
 ```text
-[Feat] Add WebP quality control to screenshot params
-[Fix] Reset device metrics before full-page capture
-[Chore] Pin chromiumoxide to 0.9.1
-[Docs] Document CHROME_BIN fallback chain in README
+[Chore] Update dependencies
+[Chore] Configure Dependabot updates
+[Chore] Rewrite service in Rust with Axum and chromiumoxide
 ```
 
-Agent-authored example:
+## GitHub Actions workflows
 
-```text
-[Docs] Add CLAUDE.md with architecture overview
+Use the standardized workflow layout in `.github/workflows`:
 
-Co-authored-by: Claude Opus 4.7 <noreply@anthropic.com>
-```
+- `ci.yml` runs on `main` pushes, pull requests targeting `main`, and manual dispatch.
+- Rust CI order: `cargo fmt --all -- --check`, `cargo check --locked --all-targets`, `cargo clippy --locked --all-targets -- -D warnings`, then `cargo test --locked`.
+- `release.yml` is the standard release build entrypoint. It runs on `v*` tags and manual dispatch, builds release artifacts, uploads them with `actions/upload-artifact`, and publishes GitHub Release assets on tag pushes.
+- `docker.yml` is the standard Docker entrypoint. It runs on `main` pushes, `v*` tags, PRs that touch Docker/build inputs, and manual dispatch. PRs build only; non-PR runs push GHCR images with lowercase image names and Docker metadata tags.
+
+Workflow maintenance rules:
+
+- Keep workflow filenames and top-level names aligned: `CI`, `Release`, `Docker`, and optional package-specific names.
+- Use `actions/checkout@v6`, `actions/setup-go@v6`, `actions/upload-artifact@v7`, `actions/download-artifact@v8`, `softprops/action-gh-release@v3`, and current Docker actions (`setup-buildx@v4`, `login@v4`, `metadata@v6`, `build-push@v7`).
+- Keep `permissions` minimal: `contents: read` for CI/Docker build-only work, `contents: write` for release publishing, and `packages: write` only when pushing container images.
+- Use workflow `concurrency` keyed by workflow name and ref, with release jobs using `release-${{ github.ref_name }}` and `cancel-in-progress: false`.
+- Do not reintroduce legacy workflow names such as `rust-ci.yml`, `build.yml`, `release-build.yml`, `docker-build.yml`, or `docker-release.yml` unless a package-specific workflow already exists and is intentionally preserved.
