@@ -34,7 +34,7 @@ use crate::{
 async fn main() -> anyhow::Result<()> {
     init_logging();
     tracing::info!(
-        "===== Screenshot Service v{} =====",
+        "========================= Screenshot Service v{} =========================",
         env!("CARGO_PKG_VERSION")
     );
     tracing::info!("Powered by Haruki Dev Team");
