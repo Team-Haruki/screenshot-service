@@ -1,4 +1,5 @@
 mod error;
+mod logging;
 mod request;
 mod screenshot;
 
@@ -21,17 +22,22 @@ use axum::{
 use serde_json::json;
 use tokio::{net::TcpListener, signal};
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
     error::AppError,
+    logging::init as init_logging,
     request::{ScreenshotQuery, ScreenshotRequest},
     screenshot::take_screenshot,
 };
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    init_tracing();
+    init_logging();
+    tracing::info!(
+        "===== Screenshot Service v{} =====",
+        env!("CARGO_PKG_VERSION")
+    );
+    tracing::info!("Powered by Haruki Dev Team");
 
     let app = Router::new()
         .route("/health", get(health))
@@ -106,16 +112,6 @@ async fn process_screenshot(mut request: ScreenshotRequest) -> Result<Response, 
     );
 
     Ok(response)
-}
-
-fn init_tracing() {
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("screenshot_service=info,tower_http=info"));
-
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(tracing_subscriber::fmt::layer())
-        .init();
 }
 
 async fn shutdown_signal() {

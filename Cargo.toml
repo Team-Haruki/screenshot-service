@@ -7,6 +7,7 @@ rust-version = "1.85"
 [dependencies]
 anyhow = "1"
 axum = "0.8"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 chromiumoxide = "0.9"
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
